@@ -7,13 +7,28 @@ import (
 )
 
 func nextDateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+
+		http.Error(
+			w,
+			"метод запроса не поддерживается",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
+
 	now := time.Now()
 
 	nowValue := r.FormValue("now")
 	if nowValue != "" {
 		parsedNow, err := time.Parse(DateFormat, nowValue)
 		if err != nil {
-			http.Error(w, "некорректная дата now", http.StatusBadRequest)
+			http.Error(
+				w,
+				"некорректная дата now",
+				http.StatusBadRequest,
+			)
 			return
 		}
 
@@ -26,7 +41,11 @@ func nextDateHandler(w http.ResponseWriter, r *http.Request) {
 		r.FormValue("repeat"),
 	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusBadRequest,
+		)
 		return
 	}
 

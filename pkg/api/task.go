@@ -1,9 +1,6 @@
 package api
 
-import (
-	"errors"
-	"net/http"
-)
+import "net/http"
 
 func taskHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -20,9 +17,12 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 		deleteTaskHandler(w, r)
 
 	default:
+		w.Header().Set("Allow", "GET, POST, PUT, DELETE")
+
 		writeError(
 			w,
-			errors.New("метод запроса не поддерживается"),
+			http.StatusMethodNotAllowed,
+			"метод запроса не поддерживается",
 		)
 	}
 }

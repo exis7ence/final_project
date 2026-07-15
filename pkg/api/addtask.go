@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -18,7 +17,8 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		writeError(
 			w,
-			fmt.Errorf("ошибка чтения JSON: %w", err),
+			http.StatusBadRequest,
+			fmt.Sprintf("ошибка чтения JSON: %v", err),
 		)
 		return
 	}
@@ -26,23 +26,24 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(task.Title) == "" {
 		writeError(
 			w,
-			errors.New("не указан заголовок задачи"),
+			http.StatusBadRequest,
+			"не указан заголовок задачи",
 		)
 		return
 	}
 
 	if err := checkDate(&task); err != nil {
-		writeError(w, err)
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	id, err := db.AddTask(&task)
 	if err != nil {
-		writeError(w, err)
+		writeInternalError(w, err)
 		return
 	}
 
-	writeJSON(w, map[string]string{
+	writeJSON(w, http.StatusCreated, map[string]string{
 		"id": strconv.FormatInt(id, 10),
 	})
 }

@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var ErrTaskNotFound = errors.New("задача не найдена")
+
 // Task содержит данные задачи планировщика
 type Task struct {
 	ID      string `json:"id"`
@@ -178,7 +180,7 @@ func GetTask(id string) (*Task, error) {
 		&task.Repeat,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, errors.New("задача не найдена")
+		return nil, ErrTaskNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("не удалось получить задачу: %w", err)
@@ -222,7 +224,7 @@ func UpdateTask(task *Task) error {
 	}
 
 	if count == 0 {
-		return errors.New("задача не найдена")
+		return ErrTaskNotFound
 	}
 
 	return nil
@@ -251,7 +253,7 @@ func DeleteTask(id string) error {
 	}
 
 	if count == 0 {
-		return errors.New("задача не найдена")
+		return ErrTaskNotFound
 	}
 
 	return nil
@@ -281,7 +283,7 @@ func UpdateDate(nextDate string, id string) error {
 	}
 
 	if count == 0 {
-		return errors.New("задача не найдена")
+		return ErrTaskNotFound
 	}
 
 	return nil

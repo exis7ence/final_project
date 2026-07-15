@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
@@ -13,16 +12,17 @@ func getTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		writeError(
 			w,
-			errors.New("не указан идентификатор задачи"),
+			http.StatusBadRequest,
+			"не указан идентификатор задачи",
 		)
 		return
 	}
 
 	task, err := db.GetTask(id)
 	if err != nil {
-		writeError(w, err)
+		writeDBError(w, err)
 		return
 	}
 
-	writeJSON(w, task)
+	writeJSON(w, http.StatusOK, task)
 }

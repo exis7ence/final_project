@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,7 +15,8 @@ func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		writeError(
 			w,
-			fmt.Errorf("ошибка чтения JSON: %w", err),
+			http.StatusBadRequest,
+			fmt.Sprintf("ошибка чтения JSON: %v", err),
 		)
 		return
 	}
@@ -24,7 +24,8 @@ func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(task.ID) == "" {
 		writeError(
 			w,
-			errors.New("не указан идентификатор задачи"),
+			http.StatusBadRequest,
+			"не указан идентификатор задачи",
 		)
 		return
 	}
@@ -32,23 +33,21 @@ func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(task.Title) == "" {
 		writeError(
 			w,
-			errors.New("не указан заголовок задачи"),
+			http.StatusBadRequest,
+			"не указан заголовок задачи",
 		)
 		return
 	}
 
-	// Используем ту же проверку даты и правила повторения
-	// которая применяется при добавлении задачи
 	if err := checkDate(&task); err != nil {
-		writeError(w, err)
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := db.UpdateTask(&task); err != nil {
-		writeError(w, err)
+		writeDBError(w, err)
 		return
 	}
 
-	// При успешном обновлении API должен вернуть пустой JSON
-	writeJSON(w, map[string]any{})
+	writeJSON(w, http.StatusOK, map[string]any{})
 }

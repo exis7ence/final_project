@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
@@ -16,9 +15,12 @@ type TasksResponse struct {
 
 func tasksHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+
 		writeError(
 			w,
-			errors.New("метод запроса не поддерживается"),
+			http.StatusMethodNotAllowed,
+			"метод запроса не поддерживается",
 		)
 		return
 	}
@@ -37,11 +39,11 @@ func tasksHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		writeError(w, err)
+		writeInternalError(w, err)
 		return
 	}
 
-	writeJSON(w, TasksResponse{
+	writeJSON(w, http.StatusOK, TasksResponse{
 		Tasks: tasks,
 	})
 }

@@ -28,9 +28,12 @@ type authClaims struct {
 // signInHandler проверяет пароль и возвращает JWT-токен
 func signInHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+
 		writeError(
 			w,
-			errors.New("метод запроса не поддерживается"),
+			http.StatusMethodNotAllowed,
+			"метод запроса не поддерживается",
 		)
 		return
 	}
@@ -40,7 +43,8 @@ func signInHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeError(
 			w,
-			fmt.Errorf("ошибка чтения JSON: %w", err),
+			http.StatusBadRequest,
+			fmt.Sprintf("ошибка чтения JSON: %v", err),
 		)
 		return
 	}
@@ -48,20 +52,21 @@ func signInHandler(w http.ResponseWriter, r *http.Request) {
 	password := os.Getenv("TODO_PASSWORD")
 
 	if !passwordsEqual(request.Password, password) {
-		writeError(w, errors.New("неверный пароль"))
+		writeError(
+			w,
+			http.StatusUnauthorized,
+			"неверный пароль",
+		)
 		return
 	}
 
 	token, err := createToken(password)
 	if err != nil {
-		writeError(
-			w,
-			fmt.Errorf("не удалось создать токен: %w", err),
-		)
+		writeInternalError(w, err)
 		return
 	}
 
-	writeJSON(w, map[string]string{
+	writeJSON(w, http.StatusOK, map[string]string{
 		"token": token,
 	})
 }
@@ -79,10 +84,10 @@ func auth(next http.HandlerFunc) http.HandlerFunc {
 
 		cookie, err := r.Cookie("token")
 		if err != nil || !validateToken(cookie.Value, password) {
-			http.Error(
+			writeError(
 				w,
-				"Authentication required",
 				http.StatusUnauthorized,
+				"требуется аутентификация",
 			)
 			return
 		}

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
@@ -13,15 +12,16 @@ func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		writeError(
 			w,
-			errors.New("не указан идентификатор задачи"),
+			http.StatusBadRequest,
+			"не указан идентификатор задачи",
 		)
 		return
 	}
 
 	if err := db.DeleteTask(id); err != nil {
-		writeError(w, err)
+		writeDBError(w, err)
 		return
 	}
 
-	writeJSON(w, map[string]any{})
+	writeJSON(w, http.StatusOK, map[string]any{})
 }

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -11,9 +10,12 @@ import (
 
 func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+
 		writeError(
 			w,
-			errors.New("метод запроса не поддерживается"),
+			http.StatusMethodNotAllowed,
+			"метод запроса не поддерживается",
 		)
 		return
 	}
@@ -22,43 +24,42 @@ func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		writeError(
 			w,
-			errors.New("не указан идентификатор задачи"),
+			http.StatusBadRequest,
+			"не указан идентификатор задачи",
 		)
 		return
 	}
 
 	task, err := db.GetTask(id)
 	if err != nil {
-		writeError(w, err)
+		writeDBError(w, err)
 		return
 	}
 
-	// Одноразовая задача после выполнения удаляется
 	if task.Repeat == "" {
 		if err := db.DeleteTask(id); err != nil {
-			writeError(w, err)
+			writeDBError(w, err)
 			return
 		}
 
-		writeJSON(w, map[string]any{})
+		writeJSON(w, http.StatusOK, map[string]any{})
 		return
 	}
 
-	// Для периодической задачи вычисляем следующую дату
 	nextDate, err := NextDate(
 		time.Now(),
 		task.Date,
 		task.Repeat,
 	)
 	if err != nil {
-		writeError(w, err)
+		writeInternalError(w, err)
 		return
 	}
 
 	if err := db.UpdateDate(nextDate, id); err != nil {
-		writeError(w, err)
+		writeDBError(w, err)
 		return
 	}
 
-	writeJSON(w, map[string]any{})
+	writeJSON(w, http.StatusOK, map[string]any{})
 }
