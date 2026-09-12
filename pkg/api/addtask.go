@@ -1,0 +1,97 @@
+package api
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/exis7ence/final_project/pkg/db"
+)
+
+func addTaskHandler(w http.ResponseWriter, r *http.Request) {
+	var task db.Task
+
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		writeError(
+			w,
+			http.StatusBadRequest,
+			fmt.Sprintf("ошибка чтения JSON: %v", err),
+		)
+		return
+	}
+
+	if strings.TrimSpace(task.Title) == "" {
+		writeError(
+			w,
+			http.StatusBadRequest,
+			"не указан заголовок задачи",
+		)
+		return
+	}
+
+	if err := checkDate(&task); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	id, err := db.AddTask(&task)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]string{
+		"id": strconv.FormatInt(id, 10),
+	})
+}
+
+// checkDate проверяет дату и правило повторения задачи
+//
+// Если дата не указана, используется сегодняшнее число
+// Если дата уже прошла
+//   - обычная задача переносится на сегодня
+//   - повторяющаяся задача переносится на следующую допустимую дату
+func checkDate(task *db.Task) error {
+	now := dateOnly(time.Now())
+
+	if task.Date == "" {
+		task.Date = now.Format(DateFormat)
+	}
+
+	taskDate, err := time.Parse(DateFormat, task.Date)
+	if err != nil {
+		return fmt.Errorf("некорректная дата задачи: %w", err)
+	}
+
+	var nextDate string
+
+	// Вызов NextDate нужен не только для вычисления даты
+	// но и для проверки правильности правила повторения
+	if task.Repeat != "" {
+		nextDate, err = NextDate(
+			now,
+			task.Date,
+			task.Repeat,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"некорректное правило повторения: %w",
+				err,
+			)
+		}
+	}
+
+	// Сравниваем календарные даты без учёта текущего времени
+	if taskDate.Before(now) {
+		if task.Repeat == "" {
+			task.Date = now.Format(DateFormat)
+		} else {
+			task.Date = nextDate
+		}
+	}
+
+	return nil
+}
